@@ -15,6 +15,33 @@ batching:
   batch_days: 7              # un lot = 7 jours consécutifs
   reference_batches: 26      # lots initiaux servant de référence/entraînement initial
 
+# Contrôles qualité d'un lot. Les contrôles d'intégrité sont BLOQUANTS ; la dérive est un
+# avertissement (le temps varie naturellement avec les saisons : un lot d'hiver n'est pas invalide).
+validation:
+  min_rows: 24                 # au moins une journée (le dernier lot est partiel)
+  psi_warning: 0.25            # seuil usuel de dérive importante
+  reports_dir: "data/reports"
+  columns:                     # bornes inclusives
+    instant:    {min: 1, max: 100000, integer: true}
+    season:     {min: 1, max: 4, integer: true}
+    yr:         {min: 0, max: 1, integer: true}
+    mnth:       {min: 1, max: 12, integer: true}
+    hr:         {min: 0, max: 23, integer: true}
+    holiday:    {min: 0, max: 1, integer: true}
+    weekday:    {min: 0, max: 6, integer: true}
+    workingday: {min: 0, max: 1, integer: true}
+    weathersit: {min: 1, max: 4, integer: true}
+    temp:       {min: 0.0, max: 1.0}
+    atemp:      {min: 0.0, max: 1.0}
+    hum:        {min: 0.0, max: 1.0}
+    windspeed:  {min: 0.0, max: 1.0}
+    casual:     {min: 0, max: 10000, integer: true}
+    registered: {min: 0, max: 10000, integer: true}
+    cnt:        {min: 0, max: 10000, integer: true}
+  # Mesuré sur les 78 lots entrants vs 26 lots de référence (PSI >= 0.25) : temp 78/78, hum 62/78,
+  # windspeed 36/78 (effet saisonnier, fausses alertes) ; hr 0/78, weathersit 15/78 (retenus).
+  drift_columns: ["hr", "weathersit"]
+
 target: "cnt"
 # casual + registered = cnt : exclus des features (fuite de la cible)
 leaky_columns: ["casual", "registered"]

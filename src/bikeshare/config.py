@@ -14,4 +14,7 @@ def load_config(path=None):
         config = yaml.safe_load(fh)
     for key in ("raw_dir", "batches_dir"):
         config["data"][key] = str((ROOT / config["data"][key]).resolve())
+    validation = config.get("validation", {})
+    if "reports_dir" in validation:
+        validation["reports_dir"] = str((ROOT / validation["reports_dir"]).resolve())
     return config

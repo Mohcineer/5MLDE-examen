@@ -20,6 +20,29 @@ une chaîne opérationnelle, reproductible et maintenable. Le plan de travail es
   est vérifié contre `data/batches/MANIFEST.json` au chargement.
 - Les données ne sont pas versionnées (`data/` est ignoré) : elles se régénèrent par la commande ci-dessous.
 
+## Contrôles qualité (avant prétraitement)
+
+`src/bikeshare/validation.py`, bornes dans `config/config.yaml`. Un rapport JSON par lot est écrit dans
+`data/reports/`.
+
+| Contrôle | Effet |
+|---|---|
+| Nombre de lignes minimum, schéma, types numériques, valeurs manquantes | **Bloquant** |
+| Bornes de chaque colonne (dont entiers), dates valides | **Bloquant** |
+| Unicité de `instant` et de (`dteday`, `hr`), cohérence `casual + registered = cnt` | **Bloquant** |
+| Dérive PSI vs lots de référence (`hr`, `weathersit`) | Avertissement |
+
+Un échec bloquant lève `DataQualityError` : l'entraînement ne démarre pas.
+
+**Choix sur la dérive.** Elle est non bloquante : sur des lots hebdomadaires comparés à 6 mois de référence,
+la météo varie avec les saisons (PSI ≥ 0,25 sur `temp` pour 78 lots entrants sur 78), ce qui rejetterait des
+lots légitimes. Seules `hr` et `weathersit`, stables (0/78 et 15/78 lots signalés), sont suivies. Limite :
+une dérive réelle de la météo n'est donc pas détectée par ce contrôle.
+
+```sh
+uv run python scripts/validate_batches.py [batch_0030]   # valide tous les lots ou un lot
+```
+
 ## Installation
 
 Prérequis : [uv](https://docs.astral.sh/uv/), Docker (pour les services, étapes suivantes).
