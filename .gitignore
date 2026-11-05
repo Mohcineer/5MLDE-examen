@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Données volumineuses et artefacts locaux : régénérés par les scripts
+data/
+mlruns/
+mlartifacts/
+*.zip
+load_tests/results/*.csv

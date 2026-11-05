@@ -1,0 +1,21 @@
+# Configuration du projet (aucun secret ici : voir .env.example)
+data:
+  source_url: "https://archive.ics.uci.edu/static/public/275/bike+sharing+dataset.zip"
+  license: "CC BY 4.0"
+  citation: >-
+    Fanaee-T, H. and Gama, J. (2013). Event labeling combining ensemble detectors and
+    background knowledge. Progress in Artificial Intelligence.
+  raw_dir: "data/raw"
+  batches_dir: "data/batches"
+  zip_sha256: "b70182d0d0508e9abbb79306ce5c0cec34869000f8220175ac83d11dbe845401"
+  csv_sha256: "e03de4ee4ef4dc376ac6e04bf829673c6269e8eba5c60fa121640fa2f829504f"
+
+# Rejeu du jeu historique par lots chronologiques (simulation de nouvelles données)
+batching:
+  batch_days: 7              # un lot = 7 jours consécutifs
+  reference_batches: 26      # lots initiaux servant de référence/entraînement initial
+
+target: "cnt"
+# casual + registered = cnt : exclus des features (fuite de la cible)
+leaky_columns: ["casual", "registered"]
+identifier_columns: ["instant", "dteday"]

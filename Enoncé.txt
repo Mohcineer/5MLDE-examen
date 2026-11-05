@@ -1,0 +1,52 @@
+Projet final 5MLDE — Industrialiser un projet de Machine Learning
+ 
+ 
+Objectif
+ 
+Réaliser un projet MLOps complet sur le sujet de votre choix. Vous choisissez vos données et votre modèle et mobilisez les pratiques OPS abordées en cours, de l'ingestion des données à la supervision du service.
+ 
+Les performances prédictives et la complexité des modèles ne sont pas évaluées. Un modèle simple suffit : l'objectif est de démontrer une chaîne opérationnelle, reproductible et maintenable. 
+Les métriques du modèle servent à illustrer le suivi et les décisions de mise en service, sans objectif de score à atteindre.
+ 
+Vous pouvez adapter le code des TPs. Les choix techniques sont libres et doivent être justifiés. Une exécution locale suffit ; aucun service payant n'est imposé.
+ 
+ 
+Suggestions de sujets
+ 
+Vous pouvez choisir un autre sujet compatible avec les attentes du projet.
+ 
+Location de vélos — Prévoir le nombre de locations. Source de données : UCI Bike Sharing.
+Mobilité urbaine — Prévoir la demande de taxis par zone. Source de données : NYC TLC Trip Records.
+Commerce — Prévoir les quantités vendues par produit. Source de données : UCI Online Retail.
+Campagnes commerciales — Estimer une probabilité de souscription. Source de données : UCI Bank Marketing.
+ 
+Il est important de documenter la provenance et les conditions d'utilisation des données.
+Un dataset historique peut être rejoué par lots pour simuler l'arrivée de nouvelles données, à condition de le préciser.
+
+ 
+Fonctionnalités attendues
+Code et reproductibilité : code modulaire, configuration séparée, dépendances maîtrisées, tests automatisés et installation documentée. Le fonctionnement ne dépend pas d'un notebook.
+Données : ingestion reproductible, contrôles de qualité avant prétraitement et interruption de l'entraînement en cas de non-conformité.
+Orchestration : enchaînement des étapes, déclenchement automatique des traitements, suivi des exécutions, gestion des échecs et alertes.
+Traçabilité et modèles : suivi des données, paramètres, métriques et artefacts ; versionnement, tags, règles de mise en service et retour à une version précédente.
+API de prédiction : prédictions en ligne et/ou en lot, validation des entrées, gestion des erreurs et identification de la version utilisée.
+Retours et persistance : collecte de feedbacks et conservation des traces d'utilisation : prédictions, versions associées, durées et erreurs.
+Charge et déploiement : tests de charge, comparaison de configurations et recommandation chiffrée des ressources nécessaires, fondée sur les mesures.
+Supervision : dashboard permettant de suivre les traitements, l'utilisation du service, ses performances et ses erreurs.
+ 
+L'intégration doit être démontrée de bout en bout : installer les outils ne suffit pas. Prévoir une démonstration du fonctionnement nominal et d'un incident contrôlé, par exemple un lot de données invalide ou une dépendance indisponible.
+
+Livrables
+Un dépôt Git contenant le code, les tests et les configurations nécessaires, sans secrets ni datasets volumineux.
+Un README présentant le sujet, l'architecture, la récupération des données et les commandes pour reproduire le fonctionnement.
+Une synthèse des choix et résultats OPS : décisions techniques, preuves d'intégration, résultats des tests de charge, dimensionnement recommandé et limites connues.
+ 
+Évaluation
+Les critères d'évaluation sont les suivants :
+ 
+Qualité du code (20%) : lisibilité, modularité, configuration, tests et maintenabilité.
+Reproductibilité (10%) : installation, données et exécution documentées et reproductibles.
+Intégration du cycle MLOps (20%) : fonctionnement effectif des étapes et circulation cohérente des données et artefacts.
+Fiabilité et traçabilité (20%) : contrôles bloquants, gestion des incidents, suivi des exécutions et versions, retour arrière.
+Exploitation du service (20%) : API fonctionnelle, persistance, feedbacks et supervision exploitable.
+Dimensionnement (10%) : pertinence du protocole de charge et justification des recommandations à partir des mesures.

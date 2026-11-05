@@ -1,0 +1,28 @@
+[project]
+name = "bikeshare-mlops"
+version = "0.1.0"
+description = "Projet final 5MLDE : chaîne MLOps sur UCI Bike Sharing"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "pandas==2.2.3",
+  "numpy==2.2.6",
+  "scikit-learn==1.6.1",
+  "pyyaml==6.0.3",
+  "httpx>=0.28.1",
+  "mlflow==3.16.1",
+  "prefect==3.8.7",
+  "fastapi>=0.162.0",
+  "uvicorn>=0.54.0",
+  "pydantic==2.14.2",
+  "psycopg[binary,pool]",
+]
+
+[dependency-groups]
+dev = ["pytest==8.3.5", "locust==2.46.6"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
