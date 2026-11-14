@@ -46,3 +46,34 @@ target: "cnt"
 # casual + registered = cnt : exclus des features (fuite de la cible)
 leaky_columns: ["casual", "registered"]
 identifier_columns: ["instant", "dteday"]
+
+# --- Entraînement : protocole « walk-forward » ---------------------------------------------------
+# Pour le lot N : entraînement sur les lots < N, validation sur le lot N (la semaine à prévoir).
+# Le candidat ET le champion actuel sont évalués sur ce même lot N : comparaison équitable.
+features:
+  raw: [season, yr, mnth, hr, holiday, weekday, workingday, weathersit, temp, atemp, hum, windspeed]
+
+model:
+  registered_name: "bikeshare"
+  champion_alias: "champion"
+  params:
+    n_estimators: 200
+    max_depth: 4
+    learning_rate: 0.1
+    subsample: 0.8
+    random_state: 42
+  cv_splits: 4                 # TimeSeriesSplit sur la partie entraînement
+
+tracking:
+  experiment: "bikeshare-5mlde"
+  policy_file: "config/policy.json"
+
+pipeline:
+  auto_promote: true           # le flow tente la mise en service si la politique qualifie la version
+  schedule_seconds: 300        # un lot toutes les 5 min en démonstration (flow.serve)
+  transient_retries: 2
+  transient_retry_delay_seconds: 5
+
+api:
+  reload_interval_seconds: 10  # relecture de l'alias `champion` (rechargement à chaud)
+  max_batch_items: 100

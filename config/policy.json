@@ -1,0 +1,10 @@
+{
+  "policy_id": "bikeshare-policy-v1",
+  "protocol_id": "walk-forward-next-batch-v1",
+  "objective": "Politique pédagogique, fixée AVANT les premiers résultats : le modèle doit battre nettement la baseline (moyenne par heure) sur le lot à prévoir, rester dans un ordre de grandeur utile, ne pas sur-apprendre, et se recharger dans un processus neuf.",
+  "primary": {"metric": "mae", "direction": "lower", "max_absolute": 110.0, "min_gain_vs_baseline": 5.0},
+  "secondary": {"metric": "r2", "direction": "higher", "min": 0.3},
+  "max_val_over_train_mae_ratio": 5.0,
+  "min_gain_vs_champion": 0.0,
+  "required_checks": ["same_protocol", "metrics_finite", "reload_ok", "mae_gain_vs_baseline", "mae_absolute", "r2_min", "train_val_gap"]
+}
