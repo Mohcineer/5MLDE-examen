@@ -1,0 +1,116 @@
+# Pile du projet final : MLflow, Prefect, PostgreSQL, Grafana, API (ressources bornées).
+#   cp .env.example .env   # puis remplacer les mots de passe
+#   docker compose up -d --build
+# Adapté de TP00_setup_des_postes/compose.yml. Ports liés à 127.0.0.1 : rien n'est exposé au réseau.
+name: bikeshare-mlops
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.16.1
+    restart: unless-stopped
+    entrypoint: ["mlflow"]
+    command: [server, --host, "0.0.0.0", --port, "5000", --workers, "1",
+              --backend-store-uri, "sqlite:////mlflow/mlflow.db", --serve-artifacts,
+              --artifacts-destination, /mlflow/artifacts, --allowed-hosts, "localhost:*,127.0.0.1:*,mlflow:5000"]
+    ports: ["127.0.0.1:${MLFLOW_PORT:-5000}:5000"]
+    volumes: [mlflow_data:/mlflow]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  prefect:
+    image: prefecthq/prefect:3.8.7-python3.12
+    restart: unless-stopped
+    command: [prefect, server, start, --host, "0.0.0.0", --port, "4200"]
+    environment:
+      PREFECT_HOME: /var/lib/prefect
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: sqlite+aiosqlite:////var/lib/prefect/prefect.db
+      PREFECT_SERVER_UI_API_URL: "http://localhost:${PREFECT_PORT:-4200}/api"
+      PREFECT_API_URL: http://127.0.0.1:4200/api
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
+    ports: ["127.0.0.1:${PREFECT_PORT:-4200}:4200"]
+    volumes: [prefect_data:/var/lib/prefect]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4200/api/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  postgres:
+    image: postgres:18.6-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bikeshare
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}"
+      API_DB_PASSWORD: "${API_DB_PASSWORD:?définir API_DB_PASSWORD dans .env}"
+      GRAFANA_DB_PASSWORD: "${GRAFANA_DB_PASSWORD:?définir GRAFANA_DB_PASSWORD dans .env}"
+    ports: ["127.0.0.1:${POSTGRES_PORT:-5432}:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./sql:/sql:ro
+      - ./sql/postgres_init.sql:/docker-entrypoint-initdb.d/010-init.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U postgres -d bikeshare"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?définir GRAFANA_ADMIN_PASSWORD dans .env}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GRAFANA_DB_PASSWORD: "${GRAFANA_DB_PASSWORD}"
+    depends_on:
+      postgres: {condition: service_healthy}
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3000}:3000"]
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources/bikeshare.yml:/etc/grafana/provisioning/datasources/bikeshare.yml:ro
+      - ./grafana/provisioning/dashboards/provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: [CMD, wget, --quiet, --tries=1, --spider, "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      args: {API_REVISION: "${API_REVISION:-local}"}
+    restart: unless-stopped
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      DATABASE_URL: "postgresql://api_writer:${API_DB_PASSWORD}@postgres:5432/bikeshare"
+      API_WORKERS: "${API_WORKERS:-1}"
+    # Limites de ressources : variables pour comparer les configurations (voir SYNTHESE.md)
+    cpus: "${API_CPUS:-1.0}"
+    mem_limit: "${API_MEM_LIMIT:-768m}"
+    depends_on:
+      mlflow: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+    ports: ["127.0.0.1:${API_PORT:-8000}:8000"]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/version', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  mlflow_data:
+  prefect_data:
+  grafana_data:
+  postgres_data:

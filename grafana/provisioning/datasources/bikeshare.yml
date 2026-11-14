@@ -1,0 +1,21 @@
+apiVersion: 1
+
+datasources:
+  - name: Bikeshare - PostgreSQL
+    uid: bikeshare-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: grafana_reader
+    editable: false
+    isDefault: true
+    secureJsonData:
+      password: $GRAFANA_DB_PASSWORD
+    jsonData:
+      database: bikeshare
+      sslmode: disable
+      postgresVersion: 1800
+      timescaledb: false
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 300

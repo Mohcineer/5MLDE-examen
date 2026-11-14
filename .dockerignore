@@ -1,0 +1,11 @@
+.venv/
+.git/
+data/
+local/
+mlruns/
+mlartifacts/
+load_tests/results/
+tests/
+__pycache__/
+*.pyc
+.env

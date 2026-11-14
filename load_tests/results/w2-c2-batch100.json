@@ -1,0 +1,91 @@
+{
+  "name": "w2-c2-batch100",
+  "workers": 2,
+  "cores": 2,
+  "batch_size": 100,
+  "batch_share": 0.2,
+  "traces_written": true,
+  "duration_s": 20,
+  "host_logical_cores": 8,
+  "date": "2026-11-14T20:50:04",
+  "steps": [
+    {
+      "concurrency": 1,
+      "requests": 871,
+      "rps": 41.8,
+      "ok_rps": 41.8,
+      "error_rate": 0.0,
+      "p50_ms": 19.1,
+      "p95_ms": 41.3,
+      "p99_ms": 45.5,
+      "mean_ms": 22.8,
+      "server_cpu_cores_used": 0.61,
+      "server_rss_mb": 469.0
+    },
+    {
+      "concurrency": 2,
+      "requests": 1063,
+      "rps": 50.0,
+      "ok_rps": 50.0,
+      "error_rate": 0.0,
+      "p50_ms": 34.8,
+      "p95_ms": 61.5,
+      "p99_ms": 72.3,
+      "mean_ms": 37.5,
+      "server_cpu_cores_used": 1.0,
+      "server_rss_mb": 469.0
+    },
+    {
+      "concurrency": 4,
+      "requests": 1221,
+      "rps": 57.3,
+      "ok_rps": 57.3,
+      "error_rate": 0.0,
+      "p50_ms": 53.5,
+      "p95_ms": 144.3,
+      "p99_ms": 193.4,
+      "mean_ms": 65.2,
+      "server_cpu_cores_used": 1.21,
+      "server_rss_mb": 465.0
+    },
+    {
+      "concurrency": 8,
+      "requests": 1475,
+      "rps": 69.0,
+      "ok_rps": 69.0,
+      "error_rate": 0.0,
+      "p50_ms": 51.8,
+      "p95_ms": 301.4,
+      "p99_ms": 1441.0,
+      "mean_ms": 108.3,
+      "server_cpu_cores_used": 1.21,
+      "server_rss_mb": 468.0
+    },
+    {
+      "concurrency": 16,
+      "requests": 1445,
+      "rps": 66.5,
+      "ok_rps": 66.5,
+      "error_rate": 0.0,
+      "p50_ms": 57.1,
+      "p95_ms": 1175.0,
+      "p99_ms": 3168.8,
+      "mean_ms": 222.4,
+      "server_cpu_cores_used": 1.21,
+      "server_rss_mb": 471.0
+    },
+    {
+      "concurrency": 32,
+      "requests": 1439,
+      "rps": 62.8,
+      "ok_rps": 62.8,
+      "error_rate": 0.0,
+      "p50_ms": 73.1,
+      "p95_ms": 2739.7,
+      "p99_ms": 5227.0,
+      "mean_ms": 455.0,
+      "server_cpu_cores_used": 1.22,
+      "server_rss_mb": 477.0
+    }
+  ]
+}

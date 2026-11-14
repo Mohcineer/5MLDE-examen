@@ -1,0 +1,465 @@
+{
+  "uid": "bikeshare-ops",
+  "title": "Bikeshare : traitements et service",
+  "tags": [
+    "bikeshare",
+    "mlops"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "editable": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Traitements (pipeline_runs)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "title": "Exécutions : succès / échecs",
+      "type": "stat",
+      "description": "Nombre d'exécutions du pipeline sur la période.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT status AS metric, count(*) AS value FROM pipeline_runs WHERE $__timeFilter(started_at) AND status <> 'running' GROUP BY status"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true,
+          "fields": "/^value$/",
+          "limit": 10
+        },
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Durée des traitements",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 9,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT started_at AS time, duration_s AS \"durée (s)\" FROM pipeline_runs WHERE $__timeFilter(started_at) AND status = 'success' ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 4,
+      "title": "Échecs par étape",
+      "type": "barchart",
+      "description": "Étape du pipeline où l'exécution s'est arrêtée.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 1,
+        "w": 9,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(failed_step, 'inconnue') AS étape, count(*) AS échecs FROM pipeline_runs WHERE $__timeFilter(started_at) AND status = 'failed' GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "title": "Dernières exécutions",
+      "type": "table",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT started_at AS début, batch_id AS lot, status AS état, round(duration_s::numeric, 1) AS \"durée (s)\", failed_step AS \"étape en échec\", left(error, 80) AS motif, model_version AS version, qualification, promoted AS promue, flow_run_id, mlflow_run_id FROM pipeline_runs WHERE $__timeFilter(started_at) ORDER BY started_at DESC LIMIT 20"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Utilisation du service (api_requests)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "title": "Requêtes par minute et par endpoint",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(started_at, 1m), endpoint AS metric, count(*) AS value FROM api_requests WHERE $__timeFilter(started_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 8,
+      "title": "Latence de traitement p50 / p95 / p99",
+      "type": "timeseries",
+      "description": "Du début du traitement HTTP à la fin du calcul ; exclut le transport réseau et l'écriture de la trace.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(started_at, 1m), percentile_cont(0.5) WITHIN GROUP (ORDER BY processing_duration_ms) AS p50, percentile_cont(0.95) WITHIN GROUP (ORDER BY processing_duration_ms) AS p95, percentile_cont(0.99) WITHIN GROUP (ORDER BY processing_duration_ms) AS p99 FROM api_requests WHERE $__timeFilter(started_at) AND http_status < 400 GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 9,
+      "title": "Taux d'erreur",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(started_at, 1m), avg((http_status >= 400)::int)::float AS \"taux d'erreur\" FROM api_requests WHERE $__timeFilter(started_at) GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 10,
+      "title": "Erreurs par code",
+      "type": "table",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 23,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT http_status AS statut, error_code AS code, endpoint, count(*) AS nombre FROM api_requests WHERE $__timeFilter(started_at) AND http_status >= 400 GROUP BY 1, 2, 3 ORDER BY 4 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 11,
+      "title": "Prédictions par version du modèle",
+      "type": "piechart",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 23,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 'v' || model_version AS version, count(*) AS prédictions FROM predictions WHERE $__timeFilter(created_at) GROUP BY model_version ORDER BY model_version"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true
+        },
+        "legend": {
+          "displayMode": "table"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Qualité en ligne (feedbacks)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 13,
+      "title": "MAE en ligne par version",
+      "type": "table",
+      "description": "Erreur entre la prédiction servie et la valeur réelle déclarée par feedback.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 'v' || p.model_version AS version, count(*) AS feedbacks, round(avg(abs(p.predicted_cnt - f.observed_cnt))::numeric, 2) AS \"MAE en ligne\", round(sqrt(avg(power(p.predicted_cnt - f.observed_cnt, 2)))::numeric, 2) AS \"RMSE en ligne\" FROM feedbacks f JOIN predictions p USING (prediction_id) WHERE $__timeFilter(f.created_at) GROUP BY p.model_version ORDER BY p.model_version"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 14,
+      "title": "Feedbacks reçus par minute",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "bikeshare-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "bikeshare-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, 1m), count(*) AS feedbacks FROM feedbacks WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "description": "Traitements du pipeline, utilisation, performances et erreurs de l'API de prévision."
+}
