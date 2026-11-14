@@ -11,3 +11,4 @@ mlruns/
 mlartifacts/
 *.zip
 load_tests/results/*.csv
+local/

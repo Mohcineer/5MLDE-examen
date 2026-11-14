@@ -1,4 +1,5 @@
 """Chargement de la configuration (YAML) ; les secrets viennent de l'environnement."""
+import json
 from pathlib import Path
 
 import yaml
@@ -18,3 +19,9 @@ def load_config(path=None):
     if "reports_dir" in validation:
         validation["reports_dir"] = str((ROOT / validation["reports_dir"]).resolve())
     return config
+
+
+def load_policy(config=None):
+    """Lire la politique de mise en service (versionnée dans Git, écrite avant les résultats)."""
+    config = config or load_config()
+    return json.loads((ROOT / config["tracking"]["policy_file"]).read_text(encoding="utf-8"))
