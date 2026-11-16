@@ -93,13 +93,13 @@ def main():
               "prédictions par version")
         table(database.query(
             "SELECT p.model_version AS version, count(*) AS feedbacks, "
-            "round(avg(abs(p.predicted_cnt - f.observed_cnt)), 2) AS mae_en_ligne "
+            "round(CAST(avg(abs(p.predicted_cnt - f.observed_cnt)) AS NUMERIC), 2) AS mae_en_ligne "
             "FROM feedbacks f JOIN predictions p ON p.prediction_id = f.prediction_id GROUP BY 1 ORDER BY 1"),
             "MAE en ligne par version")
         table(database.query(
-            "SELECT endpoint, http_status, count(*) AS n, round(avg(processing_duration_ms), 1) AS ms_moyen "
+            "SELECT endpoint, http_status, count(*) AS n, round(CAST(avg(processing_duration_ms) AS NUMERIC), 1) AS ms_moyen "
             "FROM api_requests WHERE campaign_id = 'demo-nominal' GROUP BY 1, 2 ORDER BY 1, 2"), "requêtes de la démo")
-        table(database.query("SELECT batch_id, status, round(duration_s, 1) AS duree_s, model_version, "
+        table(database.query("SELECT batch_id, status, round(CAST(duration_s AS NUMERIC), 1) AS duree_s, model_version, "
                              "qualification, promoted FROM pipeline_runs ORDER BY started_at DESC LIMIT 3"),
               "dernières exécutions du pipeline")
     else:
