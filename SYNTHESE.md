@@ -44,6 +44,25 @@ décisions de mise en service.
 - **Tests** : 59 tests `pytest` (qualité des lots, modèle, politique, registre MLflow complet,
   base, API, rechargement à chaud).
 
+### Pile Docker complète (second poste, 16/11/2026)
+
+Exécution depuis un clone propre du dépôt, avec MLflow, Prefect, PostgreSQL, Grafana et l'API en conteneurs.
+
+- **Installation** : `uv sync`, `prepare_data.py`, 59 tests passés ; `docker compose up -d --build` :
+  5 services *healthy*.
+- **Nominal** : lots 27 et 28 traités (43,4 s et 34,2 s) ; v1 puis v2 `production-ready` et promues ;
+  l'API passe à v2 sans redémarrage ; 40 prédictions et 40 feedbacks (201) tracés dans PostgreSQL
+  (MAE en ligne : v1 27,51, v2 39,26) ; rollback v2 → v1 suivi par l'API.
+- **Incident** : copie corrompue du lot 29 bloquée à `validate` (`valeurs_manquantes`), sans retry ;
+  run MLflow `FAILED` ; champion v1 inchangé ; ligne `pipeline_runs` en échec ; **alerte reçue**
+  depuis le conteneur Prefect (via `host.docker.internal`) avec `batch_id`, `mlflow_run_id` et
+  `failed_step` ; l'API sert toujours v1.
+- **Rôles PostgreSQL** : `api_writer` écrit les traces ; Grafana lit la base et le dashboard
+  *Bikeshare* s'affiche avec des données.
+- **Écart trouvé et corrigé** : sous PostgreSQL, `round(double precision, integer)` n'existe pas ; trois
+  requêtes de `demo_nominal.py`, jusque-là exécutées sous SQLite seulement, échouaient. Corrigé par
+  `CAST(... AS NUMERIC)`, compatible avec les deux bases. Les requêtes Grafana convertissaient déjà.
+
 ## 3. Tests de charge
 
 **Protocole** (fixé avant les mesures, `load_tests/run_campaign.py`). Mix 80 % `/predict`, 20 %
@@ -86,19 +105,16 @@ Aucune erreur HTTP sur aucun palier.
 
 ## 4. Limites connues
 
-- **Non exécutés sur le poste de développement** : Docker (`compose.yml`, `Dockerfile`, limites `cpus`/
-  `mem_limit`), PostgreSQL (`sql/postgres_init.sql`, droits des rôles) et Grafana (dashboard JSON généré,
-  14 panneaux, requêtes PostgreSQL) n'ont **pas été lancés ici**. Procédure de vérification sur une autre
-  machine : README, dernière section. Le schéma SQL est testé sous SQLite uniquement.
+- **Pile Docker** : validée fonctionnellement sur un second poste (section 2), mais les tests automatisés
+  utilisent SQLite ; PostgreSQL n'est couvert que par les démonstrations.
 - Les mesures de charge portent sur SQLite et des limites CPU par affinité (équivalent local de `cpus:`),
-  sans `docker stats` ; 8 cœurs logiques partagent des cœurs physiques et le générateur tourne sur la même
-  machine. Les chiffres sont des ordres de grandeur propres à ce poste ; sur PostgreSQL le plafond lié
-  aux traces sera différent.
+  sans `docker stats`. Elles n'ont **pas été refaites sous Docker et PostgreSQL** : les limites
+  `cpus`/`mem_limit` du compose ne sont donc pas mesurées. 8 cœurs logiques partagent des cœurs physiques et
+  le générateur tourne sur la même machine. Les chiffres sont des ordres de grandeur propres à ce poste ;
+  sur PostgreSQL le plafond lié aux traces sera différent.
 - Le serveur Prefect 3.8.7 est incompatible avec la version de FastAPI du projet : en local il tourne
   dans un environnement séparé (`scripts/local_stack.py`) ; l'image Docker officielle n'est pas concernée.
 - Comparaison au champion : si le champion a déjà vu le lot de validation (cas d'une réactivation d'une
   ancienne version), elle lui est favorable ; en fonctionnement normal le lot est neuf pour les deux.
 - Pas d'authentification sur l'API (usage local, ports liés à 127.0.0.1) ; alerte Teams non testée.
 - La dérive n'est pas bloquante (choix justifié plus haut) ; modèle volontairement simple.
-- Un dossier vide `C:\c\` a été créé par erreur sur le poste lors d'un chemin SQLite mal formé et n'a pas
-  pu être supprimé (chemin protégé) ; il est sans effet.

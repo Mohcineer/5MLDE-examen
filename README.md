@@ -111,12 +111,21 @@ uv run python scripts/build_dashboard.py               # régénère le dashboar
 Entrées validées par Pydantic (422 détaillé), modèle indisponible → 503. Le champion est relu toutes
 les 10 s : après `promote` ou `rollback`, la version servie change sans redémarrage.
 
-## Vérifier sur une autre machine (Docker)
+## Vérification de la pile Docker
 
-Ce qui n'a pas pu être exécuté sur le poste de développement (Docker, PostgreSQL, Grafana absents) :
+Le poste de développement n'a pas Docker. La pile complète a été vérifiée le 16/11/2026 sur un second
+poste (Windows, Docker Desktop), à partir d'un clone du dépôt. Résultats : SYNTHESE.md, section 2.
 
-1. `docker compose up -d --build` puis `docker compose ps` : tous les services *healthy*.
-2. `uv run python scripts/prepare_data.py`, puis `uv run python scripts/demo_nominal.py --rollback`.
-3. Grafana (`http://localhost:3000`, dossier *Bikeshare*) : les 14 panneaux se remplissent.
-4. `docker stats` pendant `uv run python load_tests/run_campaign.py --name docker --workers 1 --cores 1`
-   avec `API_CPUS`/`API_WORKERS` variés dans `.env` : comparer aux mesures de SYNTHESE.md.
+1. `docker compose up -d --build` puis `docker compose ps` : les 5 services *healthy* (l'API passe
+   *healthy* une fois qu'un premier champion existe, car sa sonde interroge `/version`).
+2. `uv run python scripts/prepare_data.py`, puis `uv run python scripts/demo_nominal.py --rollback`
+   et `uv run python scripts/demo_incident.py` (récepteur d'alertes lancé, automation créée avec
+   `ALERT_WEBHOOK_URL=http://host.docker.internal:8765/alert` : Prefect tourne dans un conteneur).
+3. Grafana (`http://localhost:3000`, dossier *Bikeshare*) : panneaux alimentés par PostgreSQL.
+4. À faire : `docker stats` pendant `uv run python load_tests/run_campaign.py --name docker --workers 1
+   --cores 1` avec `API_CPUS`/`API_WORKERS` variés dans `.env`, pour comparer aux mesures de SYNTHESE.md.
+
+**Dépannage.** `port is already allocated` : un autre conteneur occupe 3000, 4200, 5000 ou 5432
+(`docker ps`, puis `docker stop`). Si un service a été créé pendant ce conflit, le recréer
+(`docker compose up -d --force-recreate <service>`). Les scripts ne lisent pas `.env` : exporter
+`MLFLOW_TRACKING_URI`, `PREFECT_API_URL`, `DATABASE_URL` et `ALERT_WEBHOOK_URL` dans le terminal.
