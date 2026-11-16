@@ -21,6 +21,11 @@ class Handler(BaseHTTPRequestHandler):
         with LOG.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps({"received_at": datetime.now(timezone.utc).isoformat(), "body": body},
                                 ensure_ascii=False) + "\n")
+        try:
+            subject = json.loads(body).get("subject", "")
+        except ValueError:
+            subject = ""
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ALERTE REÇUE : {subject or body[:120]}", flush=True)
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"ok")
