@@ -57,6 +57,9 @@ Exécution depuis un clone propre du dépôt, avec MLflow, Prefect, PostgreSQL, 
   run MLflow `FAILED` ; champion v1 inchangé ; ligne `pipeline_runs` en échec ; **alerte reçue**
   depuis le conteneur Prefect (via `host.docker.internal`) avec `batch_id`, `mlflow_run_id` et
   `failed_step` ; l'API sert toujours v1.
+- **Déclenchement automatique** : `flows/pipeline_flow.py serve` crée le déploiement planifié
+  `bikeshare-prochain-lot` ; Prefect lance seul un flow run toutes les 5 minutes, chacun traitant le lot
+  suivant.
 - **Rôles PostgreSQL** : `api_writer` écrit les traces ; Grafana lit la base et le dashboard
   *Bikeshare* s'affiche avec des données.
 - **Écart trouvé et corrigé** : sous PostgreSQL, `round(double precision, integer)` n'existe pas ; trois
