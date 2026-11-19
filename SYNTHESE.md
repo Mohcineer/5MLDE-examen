@@ -106,15 +106,45 @@ Aucune erreur HTTP sur aucun palier.
 - Au-delà de ~100 req/s : écrire les traces en différé (file/lot) ou sur PostgreSQL avec pool, avant
   d'ajouter des cœurs ; limiter les lots à ≤ 20 éléments.
 
+### Mesures sous Docker + PostgreSQL
+
+Même protocole, mais contre l'API de la pile `docker compose` (`run_campaign.py --docker`), traces écrites
+dans PostgreSQL, CPU et mémoire lus par `docker stats`, limites réelles du conteneur (`cpus`, `mem_limit`
+768 Mo). Débit (req/s) / p95 (ms) :
+
+| Config Docker | c=1 | c=2 | c=4 | c=8 | c=16 | c=32 | Mémoire |
+|---|---|---|---|---|---|---|---|
+| 1 worker, 1 cœur | 40 / 30 | 62 / 44 | 57 / 103 | 49 / 297 | 48 / 688 | 29 / 2024 | 215-227 Mo |
+| 2 workers, 2 cœurs | 16 / 75 | 34 / 71 | 57 / 93 | 90 / 116 | 89 / 314 | 83 / 783 | 372-402 Mo |
+
+Aucune erreur HTTP. Une répétition (accidentelle) de la configuration 1 worker / 1 cœur a donné 57,7 req/s à
+c=4 contre 56,7 : la mesure est répétable à environ 2 %.
+
+**Lecture.**
+1. Sous Docker, le conteneur est **limité par son CPU** : à partir de c=4 (1 cœur) ou c=8 (2 cœurs) il
+   consomme 0,96 à 1,99 cœur sur les 1 ou 2 alloués, et le débit plafonne. Passer de 1 à 2 cœurs fait passer le
+   plafond de 62 à 90 req/s (+45 %). La conclusion locale (« le goulot est l'écriture des traces SQLite »)
+   ne se transpose donc pas telle quelle : avec PostgreSQL, ce sont les cœurs de l'API qui saturent.
+2. Objectif 50 req/s à p95 < 200 ms : **1 cœur** y arrive de justesse (c=4 : 57 req/s, p95 103 ms, marge
+   +13 %) et casse dès c=8 (p95 297 ms) ; **2 cœurs** tiennent jusqu'à c=8 (90 req/s, p95 116 ms, marge ×1,8).
+3. La mémoire passe d'environ 220 à 390 Mo avec le 2ᵉ worker (le modèle est chargé par processus), loin de la
+   limite de 768 Mo.
+4. À faible concurrence (c=1, 2), les 2 workers sont plus lents que le worker unique (p50 64 ms contre 22 ms) :
+   non expliqué par les mesures. Hypothèse non vérifiée : le 2ᵉ worker est moins « chaud » après la chauffe.
+
+**Recommandation retenue (Docker/PostgreSQL, objectif 50 req/s, p95 < 200 ms).** `API_WORKERS=2`,
+`API_CPUS=2.0`, `API_MEM_LIMIT=768m` : 90 req/s à p95 116 ms, mémoire mesurée au plus 402 Mo (marge ×1,9).
+Une configuration à 1 cœur ne convient que pour un trafic d'environ 50 req/s sans marge. Au-delà de
+~90 req/s, ajouter des cœurs (le débit suit le CPU) avant d'optimiser l'écriture des traces.
+
 ## 4. Limites connues
 
 - **Pile Docker** : validée fonctionnellement sur un second poste (section 2), mais les tests automatisés
   utilisent SQLite ; PostgreSQL n'est couvert que par les démonstrations.
-- Les mesures de charge portent sur SQLite et des limites CPU par affinité (équivalent local de `cpus:`),
-  sans `docker stats`. Elles n'ont **pas été refaites sous Docker et PostgreSQL** : les limites
-  `cpus`/`mem_limit` du compose ne sont donc pas mesurées. 8 cœurs logiques partagent des cœurs physiques et
-  le générateur tourne sur la même machine. Les chiffres sont des ordres de grandeur propres à ce poste ;
-  sur PostgreSQL le plafond lié aux traces sera différent.
+- Les mesures de charge ont été faites deux fois : en local (SQLite, limites CPU par affinité) et sous
+  Docker + PostgreSQL pour **deux configurations seulement** (1 worker / 1 cœur et 2 workers / 2 cœurs).
+  Le générateur de charge tourne sur la même machine que l'API, et le CPU de PostgreSQL n'est pas compté
+  dans celui du conteneur de l'API. Les chiffres sont des ordres de grandeur propres à ces postes.
 - Le serveur Prefect 3.8.7 est incompatible avec la version de FastAPI du projet : en local il tourne
   dans un environnement séparé (`scripts/local_stack.py`) ; l'image Docker officielle n'est pas concernée.
 - Comparaison au champion : si le champion a déjà vu le lot de validation (cas d'une réactivation d'une
