@@ -13,6 +13,7 @@ Limite des ressources par affinité CPU : équivalent local de `cpus:` de compos
 import argparse
 import json
 import os
+import re
 import statistics
 import subprocess
 import sys
@@ -105,17 +106,46 @@ class Sampler(threading.Thread):
             time.sleep(0.5)
 
 
+def _mib(text):
+    """'225.3MiB' / '1.2GiB' / '900kB' -> Mio."""
+    match = re.fullmatch(r"([\d.]+)\s*([A-Za-z]+)", text.strip())
+    if not match:
+        raise ValueError(text)
+    factor = {"gib": 1024, "gb": 953.7, "mib": 1, "mb": 0.954, "kib": 1 / 1024, "kb": 0.00095, "b": 0}
+    return float(match.group(1)) * factor[match.group(2).lower()]
+
+
+class DockerSampler(threading.Thread):
+    """Échantillonne CPU (en cœurs utilisés : 100 % = 1 cœur) et mémoire du conteneur via `docker stats`."""
+
+    def __init__(self, container):
+        super().__init__(daemon=True)
+        self.container, self.stop, self.cpu, self.rss = container, threading.Event(), [], []
+
+    def run(self):
+        while not self.stop.is_set():
+            out = subprocess.run(["docker", "stats", "--no-stream", "--format", "{{.CPUPerc}};{{.MemUsage}}",
+                                  self.container], capture_output=True, text=True).stdout.strip()
+            try:
+                cpu, mem = out.split(";")
+                self.cpu.append(float(cpu.rstrip("%")) / 100.0)
+                self.rss.append(_mib(mem.split("/")[0]))
+            except ValueError:
+                pass
+
+
 def percentile(values, q):
     ordered = sorted(values)
     return ordered[min(len(ordered) - 1, int(q * len(ordered)))] if ordered else None
 
 
-def measure(concurrency, duration, batch_share, batch_size, campaign, server_pid, loadgen_cores):
-    sampler = Sampler(server_pid)
+def measure(concurrency, duration, batch_share, batch_size, campaign, server_pid, loadgen_cores,
+            base_url=f"http://127.0.0.1:{PORT}", container=None):
+    sampler = DockerSampler(container) if container else Sampler(server_pid)
     sampler.start()
     time.sleep(1)                                  # première mesure CPU = 0 : on l'écarte
     started = time.perf_counter()
-    results = run_step(f"http://127.0.0.1:{PORT}", concurrency, duration, batch_share, batch_size, campaign,
+    results = run_step(base_url, concurrency, duration, batch_share, batch_size, campaign,
                        procs=2 if concurrency > 1 else 1, affinity=loadgen_cores)
     elapsed = time.perf_counter() - started
     sampler.stop.set()
@@ -159,8 +189,35 @@ def campaign(name, workers, cores, batch_size, with_db, duration, batch_share=0.
     return result
 
 
+def docker_campaign(name, url, batch_size, duration, batch_share=0.2):
+    """Mesure l'API de la pile Docker déjà lancée (config via API_CPUS / API_WORKERS / API_MEM_LIMIT du .env)."""
+    container = subprocess.run(["docker", "compose", "ps", "-q", "api"], capture_output=True, text=True,
+                               cwd=ROOT).stdout.strip()
+    if not container:
+        raise SystemExit("conteneur `api` introuvable : lancer `docker compose up -d` d'abord")
+    limits = json.loads(subprocess.run(["docker", "inspect", container], capture_output=True, text=True).stdout)[0]
+    host = limits["HostConfig"]
+    config = {"cpus": host["NanoCpus"] / 1e9, "mem_limit_mb": host["Memory"] / 2**20,
+              "workers": next((v.split("=")[1] for v in limits["Config"]["Env"] if v.startswith("API_WORKERS=")), "?")}
+    print(f"== {name} (Docker/PostgreSQL) : {config}, lot={batch_size}")
+    measure(4, 5, batch_share, batch_size, f"{name}-warmup", None, None, url, container)
+    steps = []
+    for concurrency in STEPS:
+        step = measure(concurrency, duration, batch_share, batch_size, name, None, None, url, container)
+        steps.append(step)
+        print(f"   c={concurrency:2d}  {step['rps']:7.1f} rps  p50 {step['p50_ms']:6.1f}  "
+              f"p95 {step['p95_ms']:6.1f}  p99 {step['p99_ms']:6.1f} ms  err {step['error_rate']:.1%}  "
+              f"cpu {step['server_cpu_cores_used']:.2f} cœurs  mem {step['server_rss_mb']:.0f} Mo")
+    result = {"name": name, "docker": True, **config, "batch_size": batch_size, "batch_share": batch_share,
+              "traces_written": True, "duration_s": duration, "host_logical_cores": TOTAL,
+              "date": time.strftime("%Y-%m-%dT%H:%M:%S"), "steps": steps}
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    (RESULTS / f"{name}.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--docker", metavar="URL", help="viser l'API Docker déjà lancée, ex. http://127.0.0.1:8000")
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--name")
     parser.add_argument("--workers", type=int, default=1)
@@ -169,7 +226,9 @@ def main():
     parser.add_argument("--no-db", action="store_true")
     parser.add_argument("--duration", type=int, default=20)
     args = parser.parse_args()
-    if args.all:
+    if args.docker:
+        docker_campaign(args.name or "docker", args.docker, args.batch_size, args.duration)
+    elif args.all:
         for name, workers, cores, batch, with_db in CAMPAIGNS:
             campaign(name, workers, cores, batch, with_db, args.duration)
     else:

@@ -122,8 +122,11 @@ poste (Windows, Docker Desktop), à partir d'un clone du dépôt. Résultats : S
    et `uv run python scripts/demo_incident.py` (récepteur d'alertes lancé, automation créée avec
    `ALERT_WEBHOOK_URL=http://host.docker.internal:8765/alert` : Prefect tourne dans un conteneur).
 3. Grafana (`http://localhost:3000`, dossier *Bikeshare*) : panneaux alimentés par PostgreSQL.
-4. À faire : `docker stats` pendant `uv run python load_tests/run_campaign.py --name docker --workers 1
-   --cores 1` avec `API_CPUS`/`API_WORKERS` variés dans `.env`, pour comparer aux mesures de SYNTHESE.md.
+4. Charge sous Docker : `uv run python load_tests/run_campaign.py --docker http://127.0.0.1:8000
+   --name docker-w1-c1` mesure l'API du conteneur (CPU et mémoire via `docker stats`, traces dans
+   PostgreSQL). Pour comparer des configurations, changer `API_CPUS` / `API_WORKERS` / `API_MEM_LIMIT`
+   dans `.env`, puis `docker compose up -d api` (recrée l'API) et relancer avec un autre `--name`.
+   Résultats dans `load_tests/results/`.
 
 **Dépannage.** `port is already allocated` : un autre conteneur occupe 3000, 4200, 5000 ou 5432
 (`docker ps`, puis `docker stop`). Si un service a été créé pendant ce conflit, le recréer
